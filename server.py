@@ -17,11 +17,19 @@ counter = VisitCounter()
 
 @web.middleware
 async def add_current_time(request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]) -> StreamResponse:
+    """
+    Добавляет текущее время (datetime.now()) в объект запроса (request),
+    чтобы последующие обработчики могли использовать его для логирования,
+    статистики и других целей
+    """
     request['current_time'] = datetime.now()
     return await handler(request)
 
 
 async def handle(request: Request) -> StreamResponse:
+    """
+    Собирает и возвращает статистику посещений на основе данных из VisitCounter
+    """
     client_ip = request.remote
     current_time = request["current_time"]
     counter.update(current_time, client_ip)
