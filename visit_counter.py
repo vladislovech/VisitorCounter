@@ -18,8 +18,8 @@ class VisitCounterData(TypedDict):
 
 class VisitCounter:
     def __init__(self, data: VisitCounterData | None = None, filename: str = "statistics.json") -> None:
-        self._data = data or self._load_or_initialize_data()
         self._filename = filename
+        self._data = data or self._load_or_initialize_data()
 
     @property
     def filename(self) -> str:
