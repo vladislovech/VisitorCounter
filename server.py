@@ -12,8 +12,6 @@ from aiohttp.web_response import StreamResponse
 from views import index
 from visit_counter import VisitCounter
 
-counter = VisitCounter()
-
 
 @web.middleware
 async def add_current_time(request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]) -> StreamResponse:
@@ -32,6 +30,7 @@ async def handle(request: Request) -> StreamResponse:
     """
     client_ip = request.remote
     current_time = request["current_time"]
+    counter = request.app['counter']
     counter.update(current_time, client_ip)
 
     stats = {
@@ -55,10 +54,17 @@ def setup_jinja(app: Application) -> None:
     aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(template_dir))
 
 
-app = web.Application(middlewares=[add_current_time])
-setup_jinja(app)
-app['counter'] = counter
-app.router.add_get('/', index)
+def create_app() -> web.Application:
+    """
+    создание экземпляра приложения
+    """
+    app = web.Application(middlewares=[add_current_time])
+    setup_jinja(app)
+    app['counter'] = VisitCounter()
+    app.router.add_get('/', index)
+
+    return app
+
 
 if __name__ == '__main__':
-    web.run_app(app)
+    web.run_app(create_app())
