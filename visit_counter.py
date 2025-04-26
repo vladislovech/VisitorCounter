@@ -1,13 +1,33 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import TypedDict, cast
+
+
+class VisitCounterData(TypedDict):
+    """
+    аннотация словаря из метода _get_empty_data() для mypy
+    """
+
+    total_count: int
+    day_count: dict[str, int]
+    month_count: dict[str, int]
+    year_count: dict[str, int]
+    unique_ips: dict[str, set[str]]
 
 
 class VisitCounter:
-    def __init__(self) -> None:
-        self.filename = "statistics.json"
-        self.data = self._load_or_initialize_data()
+    def __init__(self, data: VisitCounterData | None = None, filename: str = "statistics.json") -> None:
+        self._data = data or self._load_or_initialize_data()
+        self._filename = filename
+
+    @property
+    def filename(self) -> str:
+        return self._filename
+
+    @property
+    def data(self) -> VisitCounterData:
+        return self._data
 
     def update(self, date: datetime, ip: str) -> None:
         """
@@ -30,28 +50,28 @@ class VisitCounter:
 
         self._save_data()
 
-    def get_day_count(self, date: datetime) -> Any:
+    def get_day_count(self, date: datetime) -> int:
         """
         возвращает кол-во посещений за указанный день
         """
         day_str = date.strftime("%Y-%m-%d")
         return self.data["day_count"].get(day_str, 0)
 
-    def get_month_count(self, date: datetime) -> Any:
+    def get_month_count(self, date: datetime) -> int:
         """
         возвращает кол-во посещений за указанный месяц
         """
         month_str = date.strftime("%Y-%m")
         return self.data["month_count"].get(month_str, 0)
 
-    def get_year_count(self, date: datetime) -> Any:
+    def get_year_count(self, date: datetime) -> int:
         """
         возвращает кол-во посещений за указанный год
         """
         year_str = date.strftime("%Y")
         return self.data["year_count"].get(year_str, 0)
 
-    def get_total_count(self) -> Any:
+    def get_total_count(self) -> int:
         """
         возвращает кол-во посещений за все время
         """
@@ -84,7 +104,7 @@ class VisitCounter:
         """
         return len(self.data["unique_ips"].get("total", set()))
 
-    def _get_empty_data(self) -> Dict[str, Any]:
+    def _get_empty_data(self) -> VisitCounterData:
         """
         возвращает словарь для первичной инициализации
         """
@@ -114,7 +134,7 @@ class VisitCounter:
         with open(self.filename, 'w') as f:
             json.dump(data_to_save, f, indent=4)
 
-    def _load_or_initialize_data(self) -> Any:
+    def _load_or_initialize_data(self) -> VisitCounterData:
         """
         заполняет словарь данными из json файла если он существует,
         иначе инициализирует словарь
@@ -124,5 +144,5 @@ class VisitCounter:
                 data = json.load(f)
                 data["unique_ips"] = {k: set(v) for k, v in data["unique_ips"].items()}
 
-                return data
+                return cast(VisitCounterData, data)
         return self._get_empty_data()

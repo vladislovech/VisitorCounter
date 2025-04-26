@@ -1,24 +1,19 @@
-import os
 from datetime import datetime
-from typing import Any, Dict, Generator
+from pathlib import Path
 
 import pytest
 
-from visit_counter import VisitCounter
+from visit_counter import VisitCounter, VisitCounterData
 
 
 @pytest.fixture
-def visit_counter(test_user_info: Dict[str, Any]) -> Generator[VisitCounter, None, None]:
-    counter = VisitCounter()
-    counter.filename = "test.json"
-    counter.data = test_user_info
-    yield counter
-    if os.path.exists("test.json"):
-        os.remove("test.json")
+def visit_counter(test_user_info: VisitCounterData, tmp_path: Path) -> VisitCounter:
+    counter = VisitCounter(test_user_info, str(tmp_path / "statistics.json"))
+    return counter
 
 
 @pytest.fixture()
-def test_user_info() -> Dict[str, Any]:
+def test_user_info() -> VisitCounterData:
     return {
         "total_count": 30,
         "day_count": {"2025-04-12": 5, "2024-03-15": 15},
