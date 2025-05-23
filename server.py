@@ -5,11 +5,11 @@ from typing import Awaitable, Callable
 import aiohttp_jinja2
 import jinja2
 from aiohttp import web
+from aiohttp.abc import Request
 from aiohttp.web_app import Application
-from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
 
-from views import index
+from views import browsers, days_of_week, hours, index
 from visit_counter import VisitCounter
 
 
@@ -22,28 +22,6 @@ async def add_current_time(request: Request, handler: Callable[[Request], Awaita
     """
     request['current_time'] = datetime.now()
     return await handler(request)
-
-
-async def handle(request: Request) -> StreamResponse:
-    """
-    Собирает и возвращает статистику посещений на основе данных из VisitCounter
-    """
-    client_ip = request.remote
-    current_time = request["current_time"]
-    counter = request.app['counter']
-    counter.update(current_time, client_ip)
-
-    stats = {
-        "total_visits": counter.get_total_count(),
-        "unique_total_visits": counter.get_unique_total_count(),
-        "today_visits": counter.get_day_count(current_time),
-        "unique_today": counter.get_unique_day_count(current_time),
-        "month_visits": counter.get_month_count(current_time),
-        "unique_month": counter.get_unique_month_count(current_time),
-        "year_visits": counter.get_year_count(current_time),
-        "unique_year": counter.get_unique_year_count(current_time),
-    }
-    return web.json_response(stats)
 
 
 def setup_jinja(app: Application) -> None:
@@ -61,7 +39,14 @@ def create_app() -> web.Application:
     app = web.Application(middlewares=[add_current_time])
     setup_jinja(app)
     app['counter'] = VisitCounter()
-    app.router.add_get('/', index)
+    app.add_routes(
+        [
+            web.get('/', index),
+            web.get('/days_of_week', days_of_week),
+            web.get('/hours', hours),
+            web.get('/browsers', browsers),
+        ]
+    )
 
     return app
 

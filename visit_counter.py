@@ -1,7 +1,19 @@
 import json
 import os
 from datetime import datetime
+from enum import Enum
 from typing import TypedDict, cast
+
+from week_day_enum import WeekDay
+
+
+class Browser(Enum):
+    CHROME = "Chrome"
+    FIREFOX = "Firefox"
+    SAFARI = "Safari"
+    EDGE = "Edge"
+    OPERA = "Opera"
+    OTHER = "Other"
 
 
 class VisitCounterData(TypedDict):
@@ -13,6 +25,10 @@ class VisitCounterData(TypedDict):
     day_count: dict[str, int]
     month_count: dict[str, int]
     year_count: dict[str, int]
+    hour_count: dict[int, int]
+    days_of_week: dict[WeekDay, list[str]]
+    browsers: dict[Browser, int]
+    unique_ips_by_browser: dict[Browser, set[str]]
     unique_ips: dict[str, set[str]]
 
 
@@ -29,7 +45,23 @@ class VisitCounter:
     def data(self) -> VisitCounterData:
         return self._data
 
-    def update(self, date: datetime, ip: str) -> None:
+    def _detect_browser(self, user_agent: str) -> Browser:
+        """Определяет браузер по User-Agent"""
+        user_agent = user_agent.lower()
+        if 'chrome' in user_agent and 'edge' not in user_agent:
+            return Browser.CHROME
+        elif 'firefox' in user_agent:
+            return Browser.FIREFOX
+        elif 'safari' in user_agent and 'chrome' not in user_agent:
+            return Browser.SAFARI
+        elif 'edge' in user_agent:
+            return Browser.EDGE
+        elif 'opera' in user_agent or 'opr' in user_agent:
+            return Browser.OPERA
+        else:
+            return Browser.OTHER
+
+    def update(self, date: datetime, ip: str, user_agent: str = "") -> None:
         """
         обновляет счетчики посещений
         при каждом обращении к серверу по указанному дню
@@ -37,11 +69,20 @@ class VisitCounter:
         day_str = date.strftime("%Y-%m-%d")
         month_str = date.strftime("%Y-%m")
         year_str = date.strftime("%Y")
+        hour = date.hour
+        day_of_week = WeekDay(date.weekday())
+        browser = self._detect_browser(user_agent)
 
         self.data["total_count"] += 1
         self.data["day_count"][day_str] = self.data["day_count"].get(day_str, 0) + 1
         self.data["month_count"][month_str] = self.data["month_count"].get(month_str, 0) + 1
         self.data["year_count"][year_str] = self.data["year_count"].get(year_str, 0) + 1
+
+        self.data["hour_count"][hour] = self.data["hour_count"].get(hour, 0) + 1
+        self.data["browsers"][browser] = self.data["browsers"].get(browser, 0) + 1
+        self.data["unique_ips_by_browser"][browser].add(ip)
+
+        self.data["days_of_week"][day_of_week].append(ip)
 
         self.data["unique_ips"]["total"].add(ip)
         self.data["unique_ips"][day_str] = self.data["unique_ips"].get(day_str, set()) | {ip}
@@ -70,6 +111,36 @@ class VisitCounter:
         """
         year_str = date.strftime("%Y")
         return self.data["year_count"].get(year_str, 0)
+
+    def get_hour_count(self, hour: int) -> int:
+        """
+        возвращает кол-во посещений за указанный час
+        """
+        return self.data["hour_count"].get(hour, 0)
+
+    def get_browser_count(self, browser: Browser) -> int:
+        """
+        возвращает кол-во посещений с указанного браузера
+        """
+        return self.data["browsers"].get(browser, 0)
+
+    def get_browsers_stats(self) -> dict[Browser, int]:
+        """
+        возвращает статистику по всем браузерам
+        """
+        return self.data["browsers"]
+
+    def get_unique_browser_count(self, browser: Browser) -> int:
+        """
+        возвращает кол-во уникальных посещений с указанного браузера
+        """
+        return len(self.data["unique_ips_by_browser"].get(browser, set()))
+
+    def get_unique_browsers_stats(self) -> dict[Browser, int]:
+        """
+        возвращает статистику уникальных посещений по всем браузерам
+        """
+        return {browser: len(ips) for browser, ips in self.data["unique_ips_by_browser"].items()}
 
     def get_total_count(self) -> int:
         """
@@ -104,6 +175,22 @@ class VisitCounter:
         """
         return len(self.data["unique_ips"].get("total", set()))
 
+    def get_weekdays_count(self, weekday: int) -> int:
+        """
+        возвращает кол-во посещений за указанный день недели
+        """
+        day = WeekDay(weekday)
+        day_visits = self.data["days_of_week"].get(day, [])
+        return len(day_visits)
+
+    def get_unique_weekdays_count(self, weekday: int) -> int:
+        """
+        возвращает кол-во уникальных посещений за указанный день недели
+        """
+        day = WeekDay(weekday)
+        day_visits = self.data["days_of_week"].get(day, [])
+        return len(set(day_visits))
+
     def _get_empty_data(self) -> VisitCounterData:
         """
         возвращает словарь для первичной инициализации
@@ -113,6 +200,10 @@ class VisitCounter:
             "day_count": {},
             "month_count": {},
             "year_count": {},
+            "hour_count": {},
+            "days_of_week": {day: [] for day in WeekDay},
+            "browsers": {browser: 0 for browser in Browser},
+            "unique_ips_by_browser": {browser: set() for browser in Browser},
             "unique_ips": {
                 "total": set(),
             },
@@ -128,6 +219,12 @@ class VisitCounter:
             "day_count": self.data["day_count"],
             "month_count": self.data["month_count"],
             "year_count": self.data["year_count"],
+            "hour_count": self.data["hour_count"],
+            "days_of_week": {day.name: ips for day, ips in self.data["days_of_week"].items()},
+            "browsers": {browser.name: count for browser, count in self.data["browsers"].items()},
+            "unique_ips_by_browser": {
+                browser.name: list(ips) for browser, ips in self.data["unique_ips_by_browser"].items()
+            },
             "unique_ips": {k: list(v) for k, v in self.data["unique_ips"].items()},
         }
 
@@ -142,7 +239,18 @@ class VisitCounter:
         if os.path.exists(self.filename):
             with open(self.filename, 'r') as f:
                 data = json.load(f)
-                data["unique_ips"] = {k: set(v) for k, v in data["unique_ips"].items()}
+                data["days_of_week"] = {WeekDay[day]: ips for day, ips in data.get("days_of_week", {}).items()}
+                data["browsers"] = {Browser[browser]: count for browser, count in data.get("browsers", {}).items()}
+
+                unique_ips_by_browser: dict[Browser, set[str]] = {browser: set() for browser in Browser}
+
+                loaded_browser_ips = data.get("unique_ips_by_browser", {})
+                for browser, ips in loaded_browser_ips.items():
+                    unique_ips_by_browser[Browser[browser]] = set(ips)
+                data["unique_ips_by_browser"] = unique_ips_by_browser
+
+                data["unique_ips"] = {k: set(v) for k, v in data.get("unique_ips", {"total": []}).items()}
+                data["hour_count"] = {int(hour): count for hour, count in data.get("hour_count", {}).items()}
 
                 return cast(VisitCounterData, data)
         return self._get_empty_data()

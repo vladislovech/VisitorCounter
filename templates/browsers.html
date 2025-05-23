@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Статистика по браузерам</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .statistics {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .browser-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        .unique-browser-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        .browser-name {
+            font-weight: bold;
+        }
+        .browser-value {
+            color: #4CAF50;
+        }
+        .unique-browser-value {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="statistics">
+        <h1>Статистика по браузерам</h1>
+
+        <h2>Все посещения</h2>
+        {% for browser, count in browser_stats.items() %}
+        <div class="browser-item">
+            <span class="browser-name">{{ browser.value }}:</span>
+            <span class="browser-value">{{ count }}</span>
+        </div>
+        {% endfor %}
+
+        <h2>Уникальные посещения</h2>
+        {% for browser, count in unique_browser_stats.items() %}
+        <div class="unique-browser-item">
+            <span class="browser-name">{{ browser.value }}:</span>
+            <span class="unique-browser-value">{{ count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
